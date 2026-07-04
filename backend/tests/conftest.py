@@ -1,20 +1,26 @@
-"""Shared fixtures. Extended in PR3 with fake_registry / noop_memory /
-TestModel agent fixtures.
+"""Shared fixtures.
 
 Global rule: the suite must be green with no .env, no docker, no USB device,
-and no API key. PR3 adds `pydantic_ai.models.ALLOW_MODEL_REQUESTS = False`
-here so any accidental real provider call fails loudly. Settings are always
-constructed with `_env_file=None` so a developer's .env can never leak in.
+and no API key. `pydantic_ai.models.ALLOW_MODEL_REQUESTS = False` (module
+level, below) makes any accidental real provider call fail loudly —
+TestModel/FunctionModel are the only models that run here. Settings are
+always constructed with `_env_file=None` so a developer's .env can never
+leak into the suite.
 """
 
 import asyncio
 
 import pytest
+from pydantic_ai import models
 
 from selfaware.config import Settings
 from selfaware.events.bus import EventBus, Subscription
 from selfaware.events.envelope import Event
 from selfaware.hardware.mock_board import MockBoard
+from selfaware.memory.client import NullMemoryClient
+from selfaware.registry.store import DriverRegistry
+
+models.ALLOW_MODEL_REQUESTS = False  # any real provider call RAISES, suite-wide
 
 
 @pytest.fixture
@@ -31,6 +37,18 @@ def settings() -> Settings:
 @pytest.fixture
 def mock_board() -> MockBoard:
     return MockBoard()
+
+
+@pytest.fixture
+def fake_registry(bus: EventBus) -> DriverRegistry:
+    """A real DriverRegistry on the test bus — 'fake' only in that tests may
+    register records directly, bypassing the loop's admission gate."""
+    return DriverRegistry(bus)
+
+
+@pytest.fixture
+def noop_memory() -> NullMemoryClient:
+    return NullMemoryClient()
 
 
 class BusSpy:

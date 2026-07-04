@@ -39,6 +39,7 @@ from selfaware.events.payloads import (
 from selfaware.events.types import DriverStatus, EventType
 from selfaware.hardware.base import ExecResult
 from selfaware.hardware.session import BoardSession, ExclusiveBoard
+from selfaware.observability.otel import attempt_span, stage_span
 from selfaware.registry.models import DriverRecord
 from selfaware.registry.store import DriverRegistry
 
@@ -47,6 +48,14 @@ from selfaware.registry.store import DriverRegistry
 # failure (board traceback, gate reason, or plausibility verdict) — the
 # repair context is rebuilt per attempt, never accumulated message history.
 AuthorFn = Callable[[BringupSpec, int, str | None], Awaitable[DriverGenOutput]]
+
+
+def _error_class(stderr: str) -> str:
+    """Exception name off a verbatim traceback's last line, for span attributes
+    (e.g. 'ValueError'). Telemetry-only — the loop itself never parses stderr."""
+    last = stderr.strip().splitlines()[-1] if stderr.strip() else ""
+    name = last.split(":", 1)[0].strip()
+    return name if name.isidentifier() else "unknown"
 
 
 class CommissionRunner:
@@ -86,100 +95,111 @@ class CommissionRunner:
 
         async with self._session.exclusive() as board:
             for attempt in range(1, self._settings.max_attempts + 1):
-                # -- generate (attempt 1) / repair (verbatim error in hand) --------
-                gen_stage = CommissionStage.GENERATE if last_error is None else CommissionStage.REPAIR
-                self._stage(commission_id, attempt, gen_stage, StageStatus.STARTED)
-                gen = await self._generate(spec, attempt, last_error)
-                self._stage(commission_id, attempt, gen_stage, StageStatus.PASSED)
+                with attempt_span(spec.slug, spec.protocol_class.value, attempt) as span:
+                    # -- generate (attempt 1) / repair (verbatim error in hand) --------
+                    gen_stage = CommissionStage.GENERATE if last_error is None else CommissionStage.REPAIR
+                    self._stage(commission_id, attempt, gen_stage, StageStatus.STARTED)
+                    with stage_span(gen_stage.value, spec.slug, attempt):
+                        gen = await self._generate(spec, attempt, last_error)
+                    self._stage(commission_id, attempt, gen_stage, StageStatus.PASSED)
 
-                # -- validate: the static AST gate ---------------------------------
-                self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.STARTED)
-                gate = self._gate(gen, spec)
-                if not gate.passed:
-                    reason = gate.reason or "static gate rejected the code"
-                    self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.FAILED, reason)
-                    last_error = f"static gate rejected the code: {reason}"
-                    attempts.append(
-                        AttemptRecord(attempt=attempt, stage_reached=CommissionStage.VALIDATE, gate_reason=reason)
+                    # -- validate: the static AST gate ---------------------------------
+                    self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.STARTED)
+                    with stage_span(CommissionStage.VALIDATE.value, spec.slug, attempt):
+                        gate = self._gate(gen, spec)
+                    if not gate.passed:
+                        reason = gate.reason or "static gate rejected the code"
+                        span.set_attribute("selfaware.gate_verdict", f"fail:{gate.violations[0].check}" if gate.violations else "fail")
+                        self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.FAILED, reason)
+                        last_error = f"static gate rejected the code: {reason}"
+                        attempts.append(
+                            AttemptRecord(attempt=attempt, stage_reached=CommissionStage.VALIDATE, gate_reason=reason)
+                        )
+                        continue
+                    span.set_attribute("selfaware.gate_verdict", "pass")
+                    self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.PASSED)
+
+                    # -- deploy + test: ONE exec over the raw REPL (no flash writes) ---
+                    # Deploy "passes" by construction once gated: exec-over-REPL means
+                    # the code lands and runs in the same breath; TEST judges it.
+                    self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.STARTED)
+                    self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.PASSED)
+                    self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.STARTED)
+                    with stage_span(CommissionStage.TEST.value, spec.slug, attempt):
+                        result = await self._deploy_and_test(board, gen.driver_code, spec)
+
+                    if result.timed_out:
+                        # A hung driver must never wedge the line: host-owned recovery.
+                        await board.soft_reset()
+                        detail = "host timeout: exec did not return (possible hang) — board soft-reset"
+                        span.set_attribute("selfaware.board_error_class", "timeout")
+                        self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, detail)
+                        last_error = detail
+                        attempts.append(AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST))
+                        continue
+
+                    if result.stderr:
+                        # The un-fakeable signal: VERBATIM, never trimmed or paraphrased.
+                        self._bus.publish(
+                            EventType.COMMISSION_TRACEBACK,
+                            CommissionTracebackPayload(
+                                commission_id=commission_id,
+                                attempt=attempt,
+                                stage=CommissionStage.TEST,
+                                traceback=result.stderr,
+                            ),
+                        )
+                        span.set_attribute("selfaware.board_error_class", _error_class(result.stderr))
+                        self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, "board raised")
+                        last_error = result.stderr
+                        last_traceback = result.stderr
+                        attempts.append(
+                            AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST, traceback=result.stderr)
+                        )
+                        continue
+
+                    # -- judge: host plausibility, never the model's opinion -----------
+                    verdict = self._judge(result, spec)
+                    if not verdict.passed:
+                        reason = verdict.reason or "implausible reading"
+                        span.set_attribute("selfaware.board_error_class", "implausible")
+                        self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, reason)
+                        last_error = reason
+                        attempts.append(
+                            AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST, reading=verdict.value)
+                        )
+                        continue
+
+                    # -- PASSED: admission gate opens exactly here ----------------------
+                    span.set_attribute("selfaware.reading_value", str(verdict.value))
+                    span.set_attribute("selfaware.converged", True)
+                    self._stage(
+                        commission_id, attempt, CommissionStage.TEST, StageStatus.PASSED,
+                        f"reading={verdict.value}",
                     )
-                    continue
-                self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.PASSED)
-
-                # -- deploy + test: ONE exec over the raw REPL (no flash writes) ---
-                # Deploy "passes" by construction once gated: exec-over-REPL means
-                # the code lands and runs in the same breath; TEST judges it.
-                self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.STARTED)
-                self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.PASSED)
-                self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.STARTED)
-                result = await self._deploy_and_test(board, gen.driver_code, spec)
-
-                if result.timed_out:
-                    # A hung driver must never wedge the line: host-owned recovery.
-                    await board.soft_reset()
-                    detail = "host timeout: exec did not return (possible hang) — board soft-reset"
-                    self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, detail)
-                    last_error = detail
-                    attempts.append(AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST))
-                    continue
-
-                if result.stderr:
-                    # The un-fakeable signal: VERBATIM, never trimmed or paraphrased.
+                    attempts.append(
+                        AttemptRecord(
+                            attempt=attempt, stage_reached=CommissionStage.TEST, reading=verdict.value, passed=True
+                        )
+                    )
+                    self._admit(spec, gen.driver_code, attempt, verdict.value)
                     self._bus.publish(
-                        EventType.COMMISSION_TRACEBACK,
-                        CommissionTracebackPayload(
+                        EventType.COMMISSION_PASSED,
+                        CommissionPassedPayload(
                             commission_id=commission_id,
-                            attempt=attempt,
-                            stage=CommissionStage.TEST,
-                            traceback=result.stderr,
+                            slug=spec.slug,
+                            attempts_used=attempt,
+                            reading=verdict.value,
+                            unit=spec.unit,
                         ),
                     )
-                    self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, "board raised")
-                    last_error = result.stderr
-                    last_traceback = result.stderr
-                    attempts.append(
-                        AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST, traceback=result.stderr)
+                    return CommissionResult(
+                        spec=spec,
+                        status=CommissionStatus.PASSED,
+                        attempts=attempts,
+                        final_code=gen.driver_code,
+                        final_reading=verdict.value,
                     )
-                    continue
-
-                # -- judge: host plausibility, never the model's opinion -----------
-                verdict = self._judge(result, spec)
-                if not verdict.passed:
-                    reason = verdict.reason or "implausible reading"
-                    self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, reason)
-                    last_error = reason
-                    attempts.append(
-                        AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST, reading=verdict.value)
-                    )
-                    continue
-
-                # -- PASSED: admission gate opens exactly here ----------------------
-                self._stage(
-                    commission_id, attempt, CommissionStage.TEST, StageStatus.PASSED,
-                    f"reading={verdict.value}",
-                )
-                attempts.append(
-                    AttemptRecord(
-                        attempt=attempt, stage_reached=CommissionStage.TEST, reading=verdict.value, passed=True
-                    )
-                )
-                self._admit(spec, gen.driver_code, attempt, verdict.value)
-                self._bus.publish(
-                    EventType.COMMISSION_PASSED,
-                    CommissionPassedPayload(
-                        commission_id=commission_id,
-                        slug=spec.slug,
-                        attempts_used=attempt,
-                        reading=verdict.value,
-                        unit=spec.unit,
-                    ),
-                )
-                return CommissionResult(
-                    spec=spec,
-                    status=CommissionStatus.PASSED,
-                    attempts=attempts,
-                    final_code=gen.driver_code,
-                    final_reading=verdict.value,
-                )
 
             # -- budget exhausted: honest failure, clean line ------------------------
             await board.soft_reset()

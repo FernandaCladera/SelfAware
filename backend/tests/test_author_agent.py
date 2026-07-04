@@ -1,0 +1,81 @@
+"""Driver author: flat schema + dynamic instructions render keyless; the
+repair prompt embeds the verbatim traceback untouched; resolve_model gates on
+the provider key without ever calling a provider."""
+
+import pytest
+from pydantic_ai.models.test import TestModel
+
+from selfaware.agents.author import (
+    ModelUnavailable,
+    author_agent,
+    render_generate_prompt,
+    render_repair_prompt,
+    resolve_model,
+)
+from selfaware.agents.deps import AuthorDeps, render_board_profile
+from selfaware.agents.schemas import AttemptContext, DriverGenOutput
+from selfaware.bringup.models import BringupSpec, ProtocolClass
+from selfaware.config import Settings
+
+
+def _spec() -> BringupSpec:
+    return BringupSpec(
+        slug="ldr",
+        display_name="Light sensor (LDR)",
+        protocol_class=ProtocolClass.ANALOG,
+        pins={"adc": 27},
+        expected_min=0,
+        expected_max=65535,
+        unit="raw",
+    )
+
+
+async def test_author_output_shape_with_test_model(settings: Settings) -> None:
+    """TestModel synthesizes schema-valid junk -> proves the FLAT schema and
+    the dynamic per-class instructions render with no model and no key."""
+    deps = AuthorDeps(spec=_spec(), board_profile=render_board_profile(settings))
+    result = await author_agent.run(render_generate_prompt(_spec()), deps=deps, model=TestModel())
+    assert isinstance(result.output, DriverGenOutput)
+    # field ORDER is load-bearing: reasoning must come first in the schema
+    assert list(DriverGenOutput.model_fields) == ["reasoning", "driver_code", "imports_used"]
+
+
+def test_generate_prompt_names_the_protocol_class() -> None:
+    prompt = render_generate_prompt(_spec())
+    assert "analog" in prompt
+    assert "GP27" in prompt
+
+
+def test_repair_prompt_embeds_verbatim_traceback() -> None:
+    """Invariant #1: the board's stderr goes into the prompt UNTOUCHED,
+    under the canonical 'the board replied:' header."""
+    traceback = (
+        "Traceback (most recent call last):\n"
+        '  File "<stdin>", line 4, in <module>\n'
+        "ValueError: Pin GP15 does not have ADC capabilities\n"
+    )
+    attempt = AttemptContext(
+        attempt_n=2,
+        previous_code="class Driver:\n    def read(self):\n        return 0\n",
+        failure_kind="board_traceback",
+        verbatim_error=traceback,
+    )
+    prompt = render_repair_prompt(_spec(), attempt)
+    assert traceback in prompt  # byte-for-byte, never trimmed or paraphrased
+    assert "the board replied:" in prompt
+    assert attempt.previous_code in prompt
+
+
+def test_resolve_model_raises_typed_error_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    settings = Settings(_env_file=None)
+    with pytest.raises(ModelUnavailable, match="ANTHROPIC_API_KEY"):
+        resolve_model(settings)
+
+
+def test_resolve_model_returns_string_with_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    settings = Settings(_env_file=None)
+    assert resolve_model(settings) == "anthropic:claude-sonnet-5"
+    # the author override wins when present
+    assert resolve_model(settings, "anthropic:claude-haiku-4-5") == "anthropic:claude-haiku-4-5"
