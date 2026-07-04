@@ -39,7 +39,7 @@ from selfaware.events.payloads import (
 from selfaware.events.types import DriverStatus, EventType
 from selfaware.hardware.base import ExecResult
 from selfaware.hardware.session import BoardSession, ExclusiveBoard
-from selfaware.observability.otel import attempt_span, stage_span
+from selfaware.observability.otel import attempt_span, commission_span, stage_span
 from selfaware.registry.models import DriverRecord
 from selfaware.registry.store import DriverRegistry
 
@@ -76,6 +76,19 @@ class CommissionRunner:
         self._settings = settings
 
     async def run(self, spec: BringupSpec, commission_id: str) -> CommissionResult:
+        """One whole commission = one `commission` trace; attempts nest inside.
+
+        The outer span is what the Grafana dashboard keys on
+        (`{ name = "commission" }` — see docs/observability.md)."""
+        with commission_span(spec.slug, spec.protocol_class.value) as span:
+            result = await self._run(spec, commission_id)
+            span.set_attribute("selfaware.attempts_used", len(result.attempts))
+            span.set_attribute("selfaware.converged", result.status is CommissionStatus.PASSED)
+            if result.failure_reason:
+                span.set_attribute("selfaware.failure_reason", result.failure_reason)
+            return result
+
+    async def _run(self, spec: BringupSpec, commission_id: str) -> CommissionResult:
         """The bounded loop: generate/repair -> validate -> deploy -> test."""
         self._bus.publish(
             EventType.COMMISSION_STARTED,
