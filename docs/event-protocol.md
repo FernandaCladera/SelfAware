@@ -32,6 +32,11 @@ Client → server (**Command**):
   never treat them as fatal.
 - **Reconnect = rehydrate.** `system.hello` restates full state (board status
   + driver list). Clients never replay missed events.
+- **Exception: `system.hello` carries `seq: 0`.** Hello is per-connection
+  state, not stream traffic, so the server builds it directly (a bus publish
+  would broadcast it to every client) and stamps `seq: 0` — below every
+  bus-stamped seq, so it is always the first frame and never triggers gap
+  handling.
 
 ### Command lifecycle
 
