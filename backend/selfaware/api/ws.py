@@ -63,6 +63,23 @@ async def ws_endpoint(websocket: WebSocket) -> None:
     sender: asyncio.Task[None] | None = None
     try:
         await websocket.send_text(_hello_event(state).model_dump_json())
+        # Rehydrate discovery presences: the watcher's device_found events fired
+        # before this socket existed, and steady-state scans diff to silence, so
+        # a fresh client would otherwise never learn about already-present
+        # devices. Replay current presences here (same rehydrate-on-connect
+        # contract as hello), on THIS socket only — before the sender task starts
+        # so two coroutines never write the socket concurrently.
+        watcher = state.extras.get("watcher")
+        if watcher is not None:
+            now = datetime.now(UTC)
+            for presence in watcher.current_presences():
+                event = Event(
+                    type=EventType.DISCOVERY_DEVICE_FOUND,
+                    ts=now,
+                    seq=0,
+                    payload=presence.model_dump(mode="json"),
+                )
+                await websocket.send_text(event.model_dump_json())
         sender = asyncio.create_task(_send_loop(websocket, sub), name=f"ws-send-{conn_id[:8]}")
 
         while True:

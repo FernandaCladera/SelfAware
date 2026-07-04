@@ -213,6 +213,10 @@ async def write_driver(
         model=resolve_model(settings, settings.author_model),
         usage=usage,
         usage_limits=UsageLimits(request_limit=4),  # 1 request + schema retries, never a loop
+        # Override the module-default max_tokens from config: a reasoning model
+        # burns thousands of thinking tokens before the driver JSON, and 2048
+        # (the keyless-import default) truncates the response to nothing.
+        model_settings=ModelSettings(temperature=0.2, max_tokens=settings.author_max_tokens),
     )
     return result.output
 

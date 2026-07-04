@@ -64,6 +64,9 @@ export default function Console() {
   const onSet = (slug: string, level: number) =>
     send({ type: 'cmd.set', id: newCommandId(), payload: { slug, level } });
 
+  const onCommissionPreset = (slug: string) =>
+    send({ type: 'cmd.commission', id: newCommandId(), payload: { preset_slug: slug } });
+
   const onCommission = (p: PresenceCard) => {
     const payload: CommissionCmdPayload = p.suggestedSpec
       ? (p.suggestedSpec as CommissionCmdPayload)
@@ -107,6 +110,7 @@ export default function Console() {
             onRead={onRead}
             onSet={onSet}
             onCommission={onCommission}
+            onCommissionPreset={onCommissionPreset}
           />
         </Panel>
       </div>

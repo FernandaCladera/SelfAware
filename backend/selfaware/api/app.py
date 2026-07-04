@@ -146,10 +146,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         handlers.bind(state)
         await session.start_poller()
 
+        # 10. discovery — periodic I2C scan so a plugged-in device materializes
+        #     as a DeviceRail card (idles harmlessly when the board is absent).
+        from selfaware.hardware.watcher import DiscoveryWatcher
+
+        watcher = DiscoveryWatcher(session, bus, app_settings)
+        state.extras["watcher"] = watcher  # /ws replays its presences on connect
+        await watcher.start()
+
         try:
             yield
         finally:
             # shutdown: reverse order, every step shielded
+            with contextlib.suppress(Exception):
+                await watcher.stop()  # stop scanning before the wire closes
             with contextlib.suppress(Exception):
                 await session.close()  # stops the poller, closes the transport
             aclose = getattr(memory, "aclose", None)

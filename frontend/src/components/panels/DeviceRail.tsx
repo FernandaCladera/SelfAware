@@ -6,6 +6,7 @@
  */
 
 import type { DriverCard, PresenceCard } from '../../types/domain';
+import { COMMISSION_PRESETS, type CommissionPreset } from '../../lib/presets';
 
 export interface DeviceRailProps {
   drivers: DriverCard[];
@@ -13,6 +14,9 @@ export interface DeviceRailProps {
   onRead: (slug: string) => void;
   onSet: (slug: string, level: number) => void;
   onCommission: (presence: PresenceCard) => void;
+  /** Launch a preset commission (device that doesn't self-announce, e.g. servo). */
+  onCommissionPreset: (slug: string) => void;
+  presets?: CommissionPreset[];
 }
 
 const CLASS_GLYPH: Record<DriverCard['protocolClass'], string> = {
@@ -22,13 +26,41 @@ const CLASS_GLYPH: Record<DriverCard['protocolClass'], string> = {
   output: '⏻',
 };
 
-export function DeviceRail({ drivers, presences, onRead, onSet, onCommission }: DeviceRailProps) {
-  if (drivers.length === 0 && presences.length === 0) {
-    return <div className="rail__empty machine">nothing on the bus yet — plug something in</div>;
-  }
+export function DeviceRail({
+  drivers,
+  presences,
+  onRead,
+  onSet,
+  onCommission,
+  onCommissionPreset,
+  presets = COMMISSION_PRESETS,
+}: DeviceRailProps) {
+  const active = new Set(drivers.map((d) => d.slug));
 
   return (
     <div className="rail">
+      <div className="rail__presets">
+        <div className="rail__presets-label machine">commission a preset</div>
+        <div className="rail__presets-btns">
+          {presets.map((p) => (
+            <button
+              key={p.slug}
+              type="button"
+              className="btn"
+              title={active.has(p.slug) ? `${p.slug} already commissioned — re-runs the loop` : `commission ${p.slug}`}
+              onClick={() => onCommissionPreset(p.slug)}
+            >
+              {active.has(p.slug) ? '↻ ' : '+ '}
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {drivers.length === 0 && presences.length === 0 ? (
+        <div className="rail__empty machine">nothing on the bus yet — plug something in, or pick a preset above</div>
+      ) : null}
+
       {presences.map((p) => (
         <div key={p.key} className="card card--presence">
           <div className="card__title machine">

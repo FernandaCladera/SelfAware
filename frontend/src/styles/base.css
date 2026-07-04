@@ -456,6 +456,22 @@ a {
   flex-direction: column;
   gap: calc(var(--unit) * 2);
 }
+.rail__presets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--unit);
+  padding-bottom: calc(var(--unit) * 2);
+  border-bottom: 1px solid var(--line);
+}
+.rail__presets-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.rail__presets-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--unit);
+}
 .card {
   background: var(--bg-raised);
   border: 1px solid var(--line);
