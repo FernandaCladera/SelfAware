@@ -1,0 +1,14 @@
+# Grafana dashboard provider: loads every JSON in the mounted dashboards dir.
+apiVersion: 1
+
+providers:
+  - name: selfaware
+    orgId: 1
+    folder: SelfAware
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards/selfaware
+      foldersFromFilesStructure: false

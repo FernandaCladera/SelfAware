@@ -1,0 +1,63 @@
+# SelfAware local infra — all three services are OPTIONAL: the backend boots
+# and `make demo-mock` fully demos with none of them running.
+#
+#   redis         backing store for agent-memory-server
+#   agent-memory  redis/agent-memory-server REST API  (host :8100 -> container :8000;
+#                 host :8000 belongs to the SelfAware backend)
+#   lgtm          grafana/otel-lgtm all-in-one: Grafana :3000, OTLP gRPC :4317,
+#                 OTLP HTTP :4318 (Tempo/Loki/Prometheus inside)
+#
+# Healthchecks: only redis gets one (redis-cli is guaranteed present).
+# agent-memory and lgtm base images are not guaranteed to ship curl/wget, and a
+# failing healthcheck would make `docker compose up --wait` hang forever — probe
+# them from the HOST instead (see docs/observability.md build-day checklist).
+
+services:
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  agent-memory:
+    image: ghcr.io/redis/agent-memory-server:latest
+    ports:
+      - "8100:8000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      DISABLE_AUTH: "true"
+      LONG_TERM_MEMORY: "true"
+      # Local-model enrichment features off: fast boot, no downloads.
+      ENABLE_TOPIC_EXTRACTION: "false"
+      ENABLE_NER: "false"
+      # Only needed for semantic-search embeddings; keyword paths work without.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LOG_LEVEL: INFO
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "3000:3000" # Grafana UI (anonymous admin by default in this image)
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP  <- backend default (SELFAWARE_OTLP_ENDPOINT)
+    volumes:
+      # Dashboard auto-provisioning. The provider yaml points at
+      # /var/lib/grafana/dashboards/selfaware (image-agnostic); the yaml itself
+      # is mounted at BOTH plausible provisioning roots because the otel-lgtm
+      # image relocates grafana config — the wrong mount is inert, the right
+      # one loads. Build-day check: docs/observability.md.
+      - ./lgtm/dashboards-provisioning.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/selfaware.yaml:ro
+      - ./lgtm/dashboards-provisioning.yaml:/etc/grafana/provisioning/dashboards/selfaware.yaml:ro
+      - ./lgtm/dashboards:/var/lib/grafana/dashboards/selfaware:ro
+
+volumes:
+  redis-data: {}
