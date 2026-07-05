@@ -20,7 +20,7 @@ from selfaware.bringup.models import (
 from selfaware.config import Settings
 from selfaware.events.bus import EventBus
 from selfaware.events.types import DriverStatus
-from selfaware.hardware.mock_board import MockBoard, ScriptedExchange
+from selfaware.hardware.mock_board import MockBoard, ScriptedExchange, pinned_demo_script
 from selfaware.hardware.session import BoardSession
 from selfaware.registry.store import DriverRegistry
 
@@ -63,6 +63,32 @@ def _spec() -> BringupSpec:
         expected_max=65535,
         unit="raw",
     )
+
+
+async def test_demo_repair_beat_replays_on_a_second_ldr_commission(
+    settings: Settings, bus: EventBus, bus_spy: BusSpy
+) -> None:
+    """The reported bug: mock-mode LDR healed on the FIRST commission but not the
+    second (the scripted failure was a one-shot deque). With the per-commission
+    rearm, both runs must raise a board traceback and converge."""
+    from selfaware.agents.mock_author import build_mock_author
+
+    # the REAL LDR preset (unit '%', 0..100 window) — the same spec the app
+    # resolves, so the demo's plausible reading actually passes the judge.
+    ldr_spec = next(s for s in settings.default_specs() if s.slug == "ldr")
+    board = MockBoard(demo_template=pinned_demo_script(settings.pins_ldr, settings.mock_pace_s))
+    await board.connect()
+    session = BoardSession(board, bus, settings)
+    registry = DriverRegistry(bus)
+    runner = CommissionRunner(session, registry, bus, build_mock_author(settings), settings)
+
+    for run in range(2):
+        bus_spy.drain()  # isolate this run's events
+        result = await runner.run(ldr_spec, f"c-{run}")
+        assert result.status is CommissionStatus.PASSED, f"run {run} did not converge"
+        assert len(result.attempts) == 2, f"run {run} skipped the repair"  # fail then pass
+        tracebacks = [e for e in bus_spy.drain() if e.type == "commission.traceback"]
+        assert tracebacks, f"run {run} showed no error-healing (no traceback event)"
 
 
 async def test_loop_converges_in_three(

@@ -33,6 +33,7 @@ from selfaware.events.types import EventType
 from selfaware.hardware.base import BoardTransport, ExecResult
 
 if TYPE_CHECKING:
+    from selfaware.bringup.models import BringupSpec
     from selfaware.registry.store import DriverRegistry
 
 
@@ -60,6 +61,29 @@ class BoardSession:
     def bind_registry(self, registry: "DriverRegistry") -> None:
         """Late-bind the registry (lifespan builds session before registry)."""
         self._registry = registry
+
+    def rearm_demo_script(self, spec: "BringupSpec") -> None:
+        """Mock demo only: re-queue the LDR fail->repair->pass arc so the
+        self-repair beat replays on EVERY LDR commission, not just the first.
+
+        The scripted failure is a one-shot deque consumed by the run that plays
+        it (mock_board._claim_scripted popleft); without re-arming, a second LDR
+        commission falls through to the simulator and passes on attempt 1 with
+        no traceback to heal. No-op on a real board, in non-mock mode, or for
+        any commission that won't exec `ADC(pins_ldr)` — so every other sensor
+        still commissions cleanly on its own simulator. Synchronous (touches the
+        mock deque, never the wire), so it is safe to call under exclusive().
+        rearm() itself no-ops unless the board was seeded with a demo template.
+        """
+        if not self._settings.mock_board:
+            return
+        from selfaware.hardware.mock_board import MockBoard
+
+        if not isinstance(self._transport, MockBoard):
+            return
+        if spec.pins.get("adc") != self._settings.pins_ldr:
+            return
+        self._transport.rearm()
 
     @property
     def transport(self) -> BoardTransport:

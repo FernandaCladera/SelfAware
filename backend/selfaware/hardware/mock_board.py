@@ -77,11 +77,19 @@ class MockBoard:
         self,
         script: list[ScriptedExchange] | None = None,
         scan_addrs: list[int] | None = None,
+        demo_template: list[ScriptedExchange] | None = None,
     ) -> None:
         self.port_id = MOCK_PORT_ID
         self.is_mock = True
         self._connected = False
-        self._script: deque[ScriptedExchange] = deque(script or [])
+        # demo_template is the re-armable demo arc (app factory only): it seeds
+        # the initial script AND is replayed by rearm() at each LDR commission,
+        # so the self-repair beat survives being consumed. A bare `script`
+        # (tests) has no template, so rearm() leaves it untouched.
+        self._script: deque[ScriptedExchange] = deque(script if script is not None else (demo_template or []))
+        self._demo_template: list[ScriptedExchange] | None = (
+            list(demo_template) if demo_template is not None else None
+        )
         # Persistent I2C presences: answered to EVERY `.scan()` exec, before the
         # script queue and without consuming it (None = no responder, as before).
         self._scan_addrs: list[int] | None = list(scan_addrs) if scan_addrs is not None else None
@@ -166,6 +174,21 @@ class MockBoard:
     def queue(self, *exchanges: ScriptedExchange) -> None:
         """Append canned replies (consumed before any simulator can answer)."""
         self._script.extend(exchanges)
+
+    def rearm(self) -> None:
+        """Re-queue the seeded demo arc so its fail->pass beats replay.
+
+        No-op unless the board was built with a demo_template (the app factory;
+        never in tests, which queue their own scripts). The beats are a one-shot
+        deque (popleft in _claim_scripted), so without re-arming only the FIRST
+        commission sees the scripted failure and every later run falls through
+        to the simulator and passes on attempt 1. Clears first so a
+        partially-consumed or stale script never accumulates.
+        """
+        if self._demo_template is None:
+            return
+        self._script.clear()
+        self._script.extend(self._demo_template)
 
     def stimulate(self, slug: str, delta: float) -> None:
         """Shift a simulated sensor's baseline — the offline liveness stimulus.
@@ -263,3 +286,22 @@ def demo_fail_then_pass_script(slug: str = "ldr", delay_s: float = 0.15) -> list
             delay_s=delay_s,
         ),
     ]
+
+
+def pinned_demo_script(pins_ldr: int, pace_s: float) -> list[ScriptedExchange]:
+    """The LDR demo arc, pinned to its ADC pin — the single source of truth for
+    the flagship fail->repair->pass beats (used by the app factory to seed the
+    board AND by the per-commission re-arm, so both stay in lockstep).
+
+    The match scopes the scripted failure to the LDR commission specifically:
+    its read payload is the only pre-registration code containing `ADC(<pins_ldr>)`,
+    so every OTHER sensor still commissions cleanly on attempt 1 via its own
+    simulator instead of being hijacked by the canned ADC traceback. The
+    deploy+test beat holds the stage 2x the author's pace so the arc narrates
+    (~9s at the default) instead of flashing past.
+    """
+    script = demo_fail_then_pass_script(delay_s=pace_s * 2)
+    match = rf"ADC\(\s*{pins_ldr}\s*\)"
+    for exchange in script:
+        exchange.match = match
+    return script

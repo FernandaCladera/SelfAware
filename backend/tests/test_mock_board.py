@@ -1,6 +1,11 @@
 """MockBoard: scripted order, regex claims, simulated liveness, the demo arc."""
 
-from selfaware.hardware.mock_board import MockBoard, ScriptedExchange, demo_fail_then_pass_script
+from selfaware.hardware.mock_board import (
+    MockBoard,
+    ScriptedExchange,
+    demo_fail_then_pass_script,
+    pinned_demo_script,
+)
 
 
 async def test_scripted_exchanges_consumed_in_order(mock_board: MockBoard) -> None:
@@ -74,6 +79,34 @@ async def test_demo_script_yields_verbatim_traceback_then_reading() -> None:
     assert attempt2.ok
     value = float(attempt2.last_line)
     assert 2 < value < 100  # plausible AND not railed in the LDR '%' window — passes the analog judge
+
+
+async def test_rearm_replays_the_demo_arc_on_a_seeded_board() -> None:
+    """A demo_template board re-plays fail->pass on rearm() — so the self-repair
+    beat survives being consumed and shows on the SECOND LDR commission too."""
+    ldr_code = "from machine import ADC\nprint(ADC(27).read_u16())"
+    board = MockBoard(demo_template=pinned_demo_script(pins_ldr=27, pace_s=0.0))
+    await board.connect()
+
+    # first run consumes both beats: traceback then plausible reading
+    assert not (await board.exec(ldr_code, timeout_s=5.0)).ok
+    assert (await board.exec(ldr_code, timeout_s=5.0)).ok
+    # script now empty -> a third exec falls through to the simulator (passes)
+    assert (await board.exec(ldr_code, timeout_s=5.0)).ok
+
+    # re-arm and the fail->pass arc is back, verbatim
+    board.rearm()
+    again = await board.exec(ldr_code, timeout_s=5.0)
+    assert not again.ok
+    assert "AttributeError: 'ADC' object has no attribute 'read'" in again.stderr
+
+
+async def test_rearm_is_a_noop_without_a_demo_template(mock_board: MockBoard) -> None:
+    """Tests (and any board built with a bare `script`) carry no template, so
+    rearm() must not clobber their queued exchanges."""
+    mock_board.queue(ScriptedExchange(stdout="mine\n"))
+    mock_board.rearm()  # no template -> leaves the queue untouched
+    assert (await mock_board.exec("anything", timeout_s=1.0)).last_line == "mine"
 
 
 async def test_persistent_scan_responder_answers_every_scan_without_touching_the_script() -> None:

@@ -119,6 +119,11 @@ class CommissionRunner:
         last_traceback: str | None = None
 
         async with self._session.exclusive() as board:
+            # Mock demo: re-queue the LDR fail->repair->pass arc so the
+            # self-repair beat replays on every LDR commission, not just the
+            # first (the scripted failure is a one-shot deque). No-op on real
+            # hardware and for every non-LDR commission.
+            self._session.rearm_demo_script(spec)
             for attempt in range(1, self._settings.max_attempts + 1):
                 with attempt_span(spec.slug, spec.protocol_class.value, attempt) as span:
                     # -- generate (attempt 1) / repair (verbatim error in hand) --------
