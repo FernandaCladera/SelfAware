@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     discovery_interval_s: float = 4.0  # I2C bus re-scan cadence (hotplug -> device_found)
     health_interval_s: float = 4.0  # sensor.health re-score cadence (analytics/watcher.py)
 
+    # --- OLED narrator (hardware/oled_narrator.py) -----------------------------
+    # The onboard SSD1306 @0x3C narrates the agentic work instead of the factory
+    # temp/light demo. Host-authored render payloads over the raw REPL — degrades
+    # cleanly (no board -> idle, MockBoard -> harmless no-op). SELFAWARE_OLED_ENABLED=false disables.
+    oled_enabled: bool = True
+    oled_refresh_s: float = 0.5  # render-loop tick; a frame hits the wire only when it changed
+    oled_rotate_s: float = 4.0  # at-rest agent<->telemetry card rotation cadence
+
     # --- bringup loop ----------------------------------------------------------
     max_attempts: int = 4  # bounded; then honest FAILED + soft reset
     gate_max_for_range: int = 1000  # constant for-range cap enforced by the AST gate

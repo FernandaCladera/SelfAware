@@ -77,7 +77,7 @@ Budget: `SELFAWARE_MAX_ATTEMPTS` (default 4) → soft reset → honest FAILED.
 | WS2812 RGB | GP6 | addressable — hard class, not a day-1 target |
 | DHT11 | GP11 | **older revisions only**; newer boards ship SHTC3 on I2C |
 | I2C0 | SDA GP4 / SCL GP5 | |
-| SSD1306 OLED | I2C 0x3C | on-board display — "device narrates itself" option |
+| SSD1306 OLED | I2C 0x3C | on-board display — **the device narrates itself**: `hardware/oled_narrator.py` renders the live agentic work (active agent, the self-repair arc, readings + health) over the same host-authored raw-REPL exec path, replacing the factory temp/light demo |
 | SHTC3 | I2C 0x70 | **confirmed present** on the bench board (2026-07-04 scan) |
 | DC motors M1/M2 | I2C 0x22 | this board: TB6612 behind an I2C co-processor @0x22 (**not** direct GP21/22) |
 | Servo S1–S4 | I2C 0x22 | **not GPIOs** — servo channels on the same 0x22 co-processor (see below) |

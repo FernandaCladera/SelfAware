@@ -13,6 +13,7 @@ under THE lock for the duration; board.status{busy} brackets it).
 
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from selfaware.bringup import plausibility
 from selfaware.bringup.gate import GateResult, run_gate
@@ -45,6 +46,9 @@ from selfaware.observability.otel import attempt_span, commission_span, stage_sp
 from selfaware.registry.models import DriverRecord
 from selfaware.registry.store import DriverRegistry
 
+if TYPE_CHECKING:
+    from selfaware.hardware.oled_narrator import OledNarrator
+
 # The author seam: (spec, attempt_n, last_error) -> DriverGenOutput.
 # last_error is None on attempt 1; thereafter it is the VERBATIM previous
 # failure (board traceback, gate reason, or plausibility verdict) — the
@@ -70,12 +74,18 @@ class CommissionRunner:
         bus: EventBus,
         author: AuthorFn | None,
         settings: Settings,
+        oled: "OledNarrator | None" = None,
     ) -> None:
         self._session = session
         self._registry = registry
         self._bus = bus
         self._author = author
         self._settings = settings
+        # Optional: animate the self-repair arc on the onboard OLED. Drawn through
+        # the loop's own ExclusiveBoard handle (the at-rest narrator is blocked
+        # while we hold the lock) and ALWAYS failure-isolated — the display must
+        # never fail a commission.
+        self._oled = oled
 
     async def run(self, spec: BringupSpec, commission_id: str) -> CommissionResult:
         """One whole commission = one `commission` trace; attempts nest inside.
@@ -114,6 +124,8 @@ class CommissionRunner:
                     # -- generate (attempt 1) / repair (verbatim error in hand) --------
                     gen_stage = CommissionStage.GENERATE if last_error is None else CommissionStage.REPAIR
                     self._stage(commission_id, attempt, gen_stage, StageStatus.STARTED)
+                    # Draw BEFORE the LLM call so "AUTHOR/MEDIC writing" shows during its latency.
+                    await self._draw_oled(board, spec, attempt, gen_stage, StageStatus.STARTED)
                     with stage_span(gen_stage.value, spec.slug, attempt):
                         gen = await self._generate(spec, attempt, last_error)
                     # The agent's own words + code, on the wire BEFORE the gate:
@@ -145,6 +157,7 @@ class CommissionRunner:
                         reason = gate.reason or "static gate rejected the code"
                         span.set_attribute("selfaware.gate_verdict", f"fail:{gate.violations[0].check}" if gate.violations else "fail")
                         self._stage(commission_id, attempt, CommissionStage.VALIDATE, StageStatus.FAILED, reason)
+                        await self._draw_oled(board, spec, attempt, CommissionStage.VALIDATE, StageStatus.FAILED)
                         last_error = f"static gate rejected the code: {reason}"
                         attempts.append(
                             AttemptRecord(attempt=attempt, stage_reached=CommissionStage.VALIDATE, gate_reason=reason)
@@ -159,6 +172,8 @@ class CommissionRunner:
                     self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.STARTED)
                     self._stage(commission_id, attempt, CommissionStage.DEPLOY, StageStatus.PASSED)
                     self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.STARTED)
+                    # "THE BOARD // RUNNING IT" — drawn before the deploy+test exec.
+                    await self._draw_oled(board, spec, attempt, CommissionStage.TEST, StageStatus.STARTED)
                     with stage_span(CommissionStage.TEST.value, spec.slug, attempt):
                         result = await self._deploy_and_test(board, gen.driver_code, spec)
 
@@ -168,6 +183,7 @@ class CommissionRunner:
                         detail = "host timeout: exec did not return (possible hang) — board soft-reset"
                         span.set_attribute("selfaware.board_error_class", "timeout")
                         self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, detail)
+                        await self._draw_oled(board, spec, attempt, CommissionStage.TEST, StageStatus.FAILED)
                         last_error = detail
                         attempts.append(AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST))
                         continue
@@ -185,6 +201,8 @@ class CommissionRunner:
                         )
                         span.set_attribute("selfaware.board_error_class", _error_class(result.stderr))
                         self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, "board raised")
+                        # "TRACEBACK // THE BOARD REJECTED IT" — the repair trigger, on the device.
+                        await self._draw_oled(board, spec, attempt, CommissionStage.TEST, StageStatus.FAILED)
                         last_error = result.stderr
                         last_traceback = result.stderr
                         attempts.append(
@@ -198,6 +216,7 @@ class CommissionRunner:
                         reason = verdict.reason or "implausible reading"
                         span.set_attribute("selfaware.board_error_class", "implausible")
                         self._stage(commission_id, attempt, CommissionStage.TEST, StageStatus.FAILED, reason)
+                        await self._draw_oled(board, spec, attempt, CommissionStage.TEST, StageStatus.FAILED)
                         last_error = reason
                         attempts.append(
                             AttemptRecord(attempt=attempt, stage_reached=CommissionStage.TEST, reading=verdict.value)
@@ -227,6 +246,8 @@ class CommissionRunner:
                             unit=spec.unit,
                         ),
                     )
+                    # "LIVE // SIGNAL ACQUIRED" — the win, on the board's own screen.
+                    await self._draw_oled(board, spec, attempt, None, None, outcome="passed")
                     return CommissionResult(
                         spec=spec,
                         status=CommissionStatus.PASSED,
@@ -318,6 +339,37 @@ class CommissionRunner:
                 last_read_at=now,
             )
         )
+
+    async def _draw_oled(
+        self,
+        board: ExclusiveBoard,
+        spec: BringupSpec,
+        attempt: int,
+        stage: CommissionStage | None,
+        status: StageStatus | None,
+        *,
+        outcome: str | None = None,
+        fail_reason: str | None = None,
+    ) -> None:
+        """Animate one commission beat on the onboard OLED, through the loop's
+        own exclusive board handle. ALWAYS failure-isolated: a slow, absent, or
+        broken display can never fail — or even slow — a commission."""
+        if self._oled is None:
+            return
+        try:
+            await self._oled.draw_commission(
+                board,
+                slug=spec.slug,
+                display_name=spec.display_name,
+                attempt=attempt,
+                max_attempts=self._settings.max_attempts,
+                stage=stage.value if stage is not None else None,
+                status=status.value if status is not None else None,
+                outcome=outcome,
+                fail_reason=fail_reason,
+            )
+        except Exception:  # noqa: BLE001 — the OLED is ambience, never load-bearing
+            pass
 
     def _stage(
         self,

@@ -121,8 +121,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
             author = build_author(app_settings)
 
+        # 6b. the OLED narrator — built here so the loop can animate the arc on
+        #     the onboard display through its own exclusive board handle. Started
+        #     later (step 11b) with the other ambience; degrades to a no-op with
+        #     no board / MockBoard / SELFAWARE_OLED_ENABLED=false.
+        from selfaware.hardware.oled_narrator import OledNarrator
+
+        oled = OledNarrator(session, bus, app_settings)
+
         # 7. the loop + its single door
-        runner = CommissionRunner(session, registry, bus, author, app_settings)
+        runner = CommissionRunner(session, registry, bus, author, app_settings, oled=oled)
         commissioner = CommissionService(runner, bus, memory=memory)
 
         # 8. copilot deps (session, never the transport — invariant #3)
@@ -170,6 +178,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state.extras["health_watcher"] = health_watcher
         await health_watcher.start()
 
+        # 11b. the OLED narrator — subscribe + render the agentic work on the
+        #      onboard SSD1306. Last ambience up, first down.
+        state.extras["oled"] = oled
+        await oled.start()
+
         try:
             yield
         finally:
@@ -177,6 +190,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # watchers first, then the poller (session.close), then the history
             # listener — so history stops only once its data source has actually
             # stopped publishing, not before.
+            with contextlib.suppress(Exception):
+                await oled.stop()  # newest ambience, stopped first; never touches shared state
             with contextlib.suppress(Exception):
                 await health_watcher.stop()  # pure compute — safe to stop anytime
             with contextlib.suppress(Exception):
