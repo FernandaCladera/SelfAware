@@ -1,5 +1,5 @@
 /**
- * StatusDot — instrument LED. idle: dim; live: phosphor heartbeat; busy:
+ * StatusDot — instrument LED. idle: dim; live: signal-orange heartbeat; busy:
  * charge heartbeat (current flowing, verdict pending); alert: the reserved
  * red. Purely presentational.
  */

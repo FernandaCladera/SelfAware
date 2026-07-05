@@ -79,7 +79,7 @@
   color: var(--text-dim);
 }
 .fascia__brand {
-  color: var(--phosphor);
+  color: var(--ion);
   font-size: var(--fs-micro);
   font-weight: 500;
   letter-spacing: 0.22em;
@@ -125,12 +125,12 @@
   list-style: none;
   cursor: pointer;
   user-select: none;
-  color: var(--phosphor);
+  color: var(--ion);
   font-size: var(--fs-micro);
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  border: 1px solid var(--phosphor-dim);
+  border: 1px solid var(--ion-dim);
   border-radius: var(--radius);
   padding: calc(var(--unit) * 0.75) calc(var(--unit) * 2.5);
   transition:
@@ -141,10 +141,10 @@
   display: none;
 }
 .fascia__cmd-btn:hover {
-  box-shadow: 0 0 10px var(--phosphor-glow);
+  box-shadow: 0 0 10px var(--ion-glow);
 }
 .fascia__cmd[open] .fascia__cmd-btn {
-  background: var(--phosphor-tint);
+  background: var(--ion-tint);
 }
 .fascia__cmd-menu {
   position: absolute;
@@ -194,7 +194,7 @@
 }
 .fascia__cmd-item:hover:not(:disabled) {
   background: var(--bg-raised);
-  color: var(--phosphor);
+  color: var(--ion);
 }
 .fascia__cmd-item:disabled {
   color: var(--text-faint);
@@ -219,7 +219,11 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: calc(var(--unit) * 5);
-  background: var(--bg-panel);
+  /* ambient wash — the powered hum rising behind the relay, never over text */
+  background:
+    radial-gradient(60% 130% at 22% 0%, var(--ion-tint), transparent 70%),
+    radial-gradient(45% 110% at 88% 100%, var(--live-tint), transparent 72%),
+    var(--bg-panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: calc(var(--unit) * 4) calc(var(--unit) * 5);
@@ -264,7 +268,7 @@
   min-width: 10px;
 }
 .relay__link[data-done] {
-  background: var(--phosphor-dim);
+  background: var(--live-dim);
 }
 .relay__link[data-flow] {
   background-image: repeating-linear-gradient(
@@ -305,7 +309,7 @@
 .relay__ring {
   width: 44px;
   height: 44px;
-  opacity: 0.5;
+  opacity: 0.72;
   transition: opacity var(--stage-ms) var(--ease-snap);
 }
 .relay__ring[data-spin] {
@@ -351,19 +355,19 @@
   transition: color var(--stage-ms) var(--ease-snap);
 }
 .relay__kind {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  opacity: 0.55;
+  opacity: 0.8;
 }
-/* mark agents by brightness, not hue — keeps green scarce */
+/* mark agents by brightness, not hue — keeps the strike scarce */
 .relay__station[data-agent] .relay__kind {
   color: var(--text-dim);
   opacity: 0.9;
 }
 .relay__scars {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--alert-dim);
 }
@@ -387,11 +391,11 @@
   color: var(--text-bright);
 }
 .relay__station[data-state='passed'] .relay__node {
-  box-shadow: inset 0 0 0 1px var(--phosphor-dim);
+  box-shadow: inset 0 0 0 1px var(--live-dim);
 }
 .relay__station[data-state='passed'] .relay__mark {
-  color: var(--phosphor);
-  border-color: var(--phosphor-dim);
+  color: var(--live);
+  border-color: var(--live-dim);
 }
 .relay__station[data-state='passed'] .relay__label {
   color: var(--text-dim);
@@ -434,7 +438,7 @@
   background: var(--charge);
 }
 .relay__now[data-tone='live'] .relay__now-dot {
-  background: var(--phosphor);
+  background: var(--live);
 }
 .relay__now[data-tone='alert'] .relay__now-dot {
   background: var(--alert);
@@ -473,7 +477,7 @@
   overflow: hidden;
 }
 /* The card frame stays neutral; the live reading (trace + value) carries the
-   phosphor. Green stays scarce — it means a real signal, not a lit container. */
+   orange. The strike stays scarce — it means a real signal, not a lit container. */
 .hero__signal-head {
   display: flex;
   align-items: center;
@@ -588,7 +592,7 @@
   padding-top: 3px;
 }
 .pilot__msg--user .pilot__who {
-  color: var(--phosphor);
+  color: var(--ion);
 }
 .pilot__msg--user .pilot__text {
   color: var(--text);
@@ -597,7 +601,7 @@
   color: var(--text-dim);
 }
 .pilot__cursor {
-  color: var(--phosphor);
+  color: var(--ion);
   animation: heartbeat 1.1s steps(2, start) infinite;
 }
 .pilot__toolrow {
@@ -616,13 +620,13 @@
   flex: none;
 }
 .pilot__prompt {
-  color: var(--phosphor);
+  color: var(--ion);
 }
 
 .chip {
   font-family: var(--font-machine);
   font-size: var(--fs-meta);
-  color: var(--phosphor-dim);
+  color: var(--ion-dim);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -634,8 +638,8 @@
 @keyframes chip-pop {
   from {
     transform: scale(0.9);
-    border-color: var(--phosphor);
-    color: var(--phosphor);
+    border-color: var(--ion);
+    color: var(--ion);
   }
   to {
     transform: scale(1);
@@ -659,13 +663,13 @@
   animation: fade-in var(--pulse-ms) var(--ease-snap);
 }
 .toolchip[data-state='ok'] {
-  border-left-color: var(--phosphor-dim);
+  border-left-color: var(--live-dim);
 }
 .toolchip[data-state='err'] {
   border-left-color: var(--alert);
 }
 .toolchip__call {
-  color: var(--phosphor-dim);
+  color: var(--ion-dim);
 }
 .toolchip__args {
   color: var(--text-faint);
@@ -716,7 +720,7 @@
 .serial__glyph[data-role='author'],
 .serial__glyph[data-role='medic'],
 .serial__glyph[data-role='pilot'] {
-  color: var(--phosphor-dim);
+  color: var(--ion-dim);
 }
 .serial__text {
   flex: 1;
@@ -730,7 +734,7 @@
   color: var(--alert);
 }
 .serial__row[data-tone='live'] .serial__glyph {
-  color: var(--phosphor);
+  color: var(--live);
 }
 .serial__row[data-tone='charge'] .serial__glyph {
   color: var(--charge);

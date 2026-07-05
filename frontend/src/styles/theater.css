@@ -1,7 +1,7 @@
 /**
  * The commission theater — the loop as a living circuit, the attempt
  * dossier, the board terminal, the verdict, the admission stamp, and the
- * resting scope. Charge = current flowing; phosphor = judged alive;
+ * resting scope. Charge = current flowing; orange = judged alive;
  * alert = the board's verbatim voice. The traceback SLAMS (no easing);
  * the stamp lands once (overshoot); everything else breathes quietly.
  */
@@ -27,7 +27,7 @@
   fill: none;
 }
 .circuit__trace--done {
-  stroke: var(--phosphor-dim);
+  stroke: var(--live-dim);
 }
 .circuit__trace--flow {
   stroke: var(--charge);
@@ -77,8 +77,8 @@
   box-shadow: 0 0 10px var(--charge-glow);
 }
 .circuit__dot--passed {
-  background: var(--phosphor);
-  border-color: var(--phosphor);
+  background: var(--live);
+  border-color: var(--live);
 }
 .circuit__dot--failed {
   background: var(--alert);
@@ -124,7 +124,7 @@
   animation: fade-in var(--act-ms) var(--ease-snap);
 }
 .circuit__scar--pass {
-  color: var(--phosphor);
+  color: var(--live);
 }
 
 .circuit__meta {
@@ -250,11 +250,11 @@
   user-select: none;
 }
 .code-well__cursor {
-  color: var(--phosphor);
+  color: var(--ion);
   animation: heartbeat 1.1s steps(2, start) infinite;
 }
 .tok-kw {
-  color: var(--phosphor-dim);
+  color: var(--ion-dim);
 }
 .tok-comment {
   color: var(--text-faint);
@@ -317,7 +317,7 @@
   font-variant-numeric: tabular-nums;
 }
 .term__cursor {
-  color: var(--phosphor);
+  color: var(--ion);
   animation: heartbeat 1.1s steps(2, start) infinite;
 }
 
@@ -395,7 +395,7 @@
   font-family: var(--font-machine);
   font-size: var(--fs-mono);
   color: var(--text-dim);
-  opacity: 0.6; /* past steps recede */
+  opacity: 0.72; /* past steps recede */
   transition: opacity var(--stage-ms) var(--ease-snap);
 }
 .runstep--live {
@@ -420,7 +420,7 @@
 }
 .runstep[data-actor='author'] .runstep__glyph,
 .runstep[data-actor='medic'] .runstep__glyph {
-  color: var(--phosphor-dim);
+  color: var(--ion-dim);
 }
 .runstep__action {
   flex: 1;
@@ -433,7 +433,7 @@
   color: var(--charge);
 }
 .runstep__result--live {
-  color: var(--phosphor);
+  color: var(--live);
 }
 .runstep__result--alert {
   color: var(--alert);
@@ -471,7 +471,7 @@
   opacity: 1;
 }
 .runstep--admit .runstep__action {
-  color: var(--phosphor);
+  color: var(--live);
 }
 
 /* the source pane (driver code, always visible) */

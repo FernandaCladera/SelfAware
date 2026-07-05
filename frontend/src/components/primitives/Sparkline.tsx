@@ -1,6 +1,6 @@
 /**
  * Sparkline — a 72×20 whisper of the scope. Same transient-subscribe rAF
- * pattern as ReadingScope (no React re-render per sample); 1px phosphor
+ * pattern as ReadingScope (no React re-render per sample); 1px ion-blue
  * polyline, alert where the host judged a value implausible. No grid, no
  * glow — the rail hints, the theater shows.
  */
@@ -29,8 +29,8 @@ function draw(canvas: HTMLCanvasElement, slug: string, w: number, h: number): vo
   if (!ring || ring.length < 2) return;
 
   const cs = getComputedStyle(canvas);
-  const phosphor = cs.getPropertyValue('--phosphor-dim').trim() || '#1fa368';
-  const alert = cs.getPropertyValue('--alert').trim() || '#ff5f56';
+  const hum = cs.getPropertyValue('--ion-dim').trim() || '#3a72a8';
+  const alert = cs.getPropertyValue('--alert').trim() || '#ff5d4d';
 
   let min = Infinity;
   let max = -Infinity;
@@ -45,7 +45,7 @@ function draw(canvas: HTMLCanvasElement, slug: string, w: number, h: number): vo
 
   const n = ring.length;
   ctx.lineWidth = 1;
-  ctx.strokeStyle = phosphor;
+  ctx.strokeStyle = hum;
   ctx.beginPath();
   let anyBad = false;
   ring.forEach((pt, i) => {

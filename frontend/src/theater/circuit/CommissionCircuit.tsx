@@ -1,6 +1,6 @@
 /**
  * CommissionCircuit — the loop rendered as a living signal path. Current
- * (charge dashes) flows into the active node; judged nodes snap phosphor or
+ * (charge dashes) flows into the active node; judged nodes snap orange or
  * alert; REPAIR is a return trace curving under the path back to GENERATE;
  * every attempt leaves a permanent scar under the node where it died.
  * Derived purely from commission.active.trail + history — zero new state.

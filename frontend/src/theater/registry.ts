@@ -11,7 +11,7 @@ import type { PulseTone } from './pulse';
 
 export interface RegistryEntry {
   pulse?: PanelId;
-  /** Semantic tone of the pulse; defaults to phosphor. */
+  /** Semantic tone of the pulse; defaults to live. */
   pulseTone?: PulseTone;
 }
 
@@ -30,5 +30,5 @@ export const registry: Partial<Record<EventType, RegistryEntry>> = {
 export function resolvePulse(type: string): { id: PanelId; tone: PulseTone } | undefined {
   const entry = (registry as Record<string, RegistryEntry | undefined>)[type];
   if (!entry?.pulse) return undefined;
-  return { id: entry.pulse, tone: entry.pulseTone ?? 'phosphor' };
+  return { id: entry.pulse, tone: entry.pulseTone ?? 'live' };
 }

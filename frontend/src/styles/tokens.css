@@ -1,64 +1,71 @@
 /**
- * SelfAware tokens — a dark instrument in a quiet room.
+ * SelfAware tokens — a powered instrument: blue hum, orange strike.
  *
- * 60/30/10: near-black structure / grayscale voice / color only where it
- * MEANS something. Three semantics, strictly scoped:
- *   phosphor — alive · verified · live signal (the only success color)
- *   charge   — current in flight, verdict pending (running ≠ succeeded)
- *   alert    — RESERVED: the board's verbatim voice + failure states
- * Nothing else on this screen gets color.
+ * 60/30/10: cool graphite structure / cool-gray voice / color only where it
+ * MEANS something. Four semantics, strictly scoped:
+ *   ion    — powered structure: chrome, focus, identity, idle-but-on
+ *   live   — alive · verified · live signal (the only success color; orange)
+ *   charge — current in flight, verdict pending (running ≠ succeeded; gold)
+ *   alert  — RESERVED: the board's verbatim voice + failure states
+ * The hum is blue; orange strikes only when the board proves it's alive.
  */
 :root {
   color-scheme: dark;
 
-  /* surfaces — one hue, lightness only, four steps */
-  --bg-void: #08090b; /* the room */
-  --bg-panel: #0e1013; /* instrument face */
-  --bg-raised: #14171c; /* cards, chips */
-  --bg-overlay: #1a1e24; /* code wells, expanded rows, the stamp plate */
+  /* surfaces — cool graphite, panels clearly lifted off the void */
+  --bg-void: #0f1216; /* the room */
+  --bg-panel: #181e25; /* instrument face */
+  --bg-raised: #202730; /* cards, chips */
+  --bg-overlay: #29313c; /* code wells, expanded rows, the stamp plate */
 
   /* hairlines — never shadows */
-  --line: rgb(255 255 255 / 0.06);
-  --line-strong: rgb(255 255 255 / 0.12);
+  --line: rgb(210 230 255 / 0.09);
+  --line-strong: rgb(210 230 255 / 0.18);
 
-  /* text — four tiers */
-  --text-bright: #f4f7fa; /* hero numbers, verdicts */
-  --text: #d7dce3; /* primary */
-  --text-dim: #8b95a1; /* labels, meta */
-  --text-faint: #59616b; /* decorative chrome only, never load-bearing */
+  /* text — four tiers, cool off-whites */
+  --text-bright: #f2f6fa; /* hero numbers, verdicts */
+  --text: #e2e8ef; /* primary */
+  --text-dim: #a8b4c2; /* labels, meta */
+  --text-faint: #7d8896; /* decorative chrome only, never load-bearing */
   --text-muted: var(--text-dim); /* legacy alias */
 
-  /* phosphor — THE accent */
-  --phosphor: #3dffa0;
-  --phosphor-dim: #1fa368;
-  --phosphor-glow: rgb(61 255 160 / 0.35);
-  --phosphor-tint: rgb(61 255 160 / 0.07);
+  /* ion — powered structure: the hum */
+  --ion: #5cb2ff;
+  --ion-dim: #4f8ec9;
+  --ion-glow: rgb(92 178 255 / 0.35);
+  --ion-tint: rgb(92 178 255 / 0.07);
+
+  /* live — signal orange: the strike */
+  --live: #ff8a3d;
+  --live-dim: #c86e2c;
+  --live-glow: rgb(255 138 61 / 0.4);
+  --live-tint: rgb(255 138 61 / 0.08);
 
   /* charge — in flight, not yet judged */
-  --charge: #f0b445;
-  --charge-dim: #8a6a2a;
-  --charge-glow: rgb(240 180 69 / 0.3);
+  --charge: #ffc94d;
+  --charge-dim: #b08e3c;
+  --charge-glow: rgb(255 201 77 / 0.35);
 
   /* alert — reserved */
-  --alert: #ff5f56;
-  --alert-dim: #8f3b36;
-  --alert-glow: rgb(255 95 86 / 0.3);
-  --alert-tint: rgb(255 95 86 / 0.08);
+  --alert: #ff5d4d;
+  --alert-dim: #b04a40;
+  --alert-glow: rgb(255 93 77 / 0.35);
+  --alert-tint: rgb(255 93 77 / 0.08);
 
   /* two voices */
   --font-machine:
     'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-voice: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* type — projector-first (~1.25 off 15px); nothing load-bearing < 13px */
-  --fs-micro: 12px; /* tracked-caps panel titles, lane tags only */
-  --fs-meta: 13px; /* timestamps, attempt counters, card meta */
-  --fs-mono: 14px; /* code, log lines, terminal */
-  --fs-body: 15px; /* chat, prose, card titles */
-  --fs-emph: 18px; /* act titles, verdict copy */
-  --fs-head: 22px; /* rail live readings, gate verdict */
-  --fs-display: 30px; /* stamp lettering, empty states */
-  --fs-hero: 56px; /* THE reading — tabular-nums */
+  /* type — projector-first (~1.25 off 16px); nothing load-bearing < 14px */
+  --fs-micro: 13px; /* tracked-caps panel titles, lane tags only */
+  --fs-meta: 14px; /* timestamps, attempt counters, card meta */
+  --fs-mono: 15px; /* code, log lines, terminal */
+  --fs-body: 16px; /* chat, prose, card titles */
+  --fs-emph: 20px; /* act titles, verdict copy */
+  --fs-head: 24px; /* rail live readings, gate verdict */
+  --fs-display: 32px; /* stamp lettering, empty states */
+  --fs-hero: 60px; /* THE reading — tabular-nums */
 
   /* spacing & shape — workbench-tight */
   --unit: 4px;

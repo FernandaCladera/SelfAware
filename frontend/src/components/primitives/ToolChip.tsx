@@ -1,7 +1,7 @@
 /**
  * ToolChip — one agent tool call, rendered live: it appears in-flight (charge
  * left-border) the instant agent.tool_call lands, then resolves to ok
- * (phosphor) or err (alert) when agent.tool_result patches it. Shared by the
+ * (live-orange) or err (alert) when agent.tool_result patches it. Shared by the
  * AGENT column (AUTHOR/MEDIC dry_gate) and the PILOT console (read_/set_) so
  * every agent shows the hands it is using — the judge-facing proof of work.
  */

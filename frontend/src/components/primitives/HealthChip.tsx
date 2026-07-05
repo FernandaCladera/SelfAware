@@ -1,6 +1,6 @@
 /**
  * HealthChip — the sensor's vitals annunciator. An instrument LED + a
- * tracked-caps word: the DOT carries the color (healthy → phosphor heartbeat,
+ * tracked-caps word: the DOT carries the color (healthy → signal-orange heartbeat,
  * degrading → charge, critical → alert, unknown/actuator → dim), the label
  * lights only when it demands attention. Green stays scarce — the chip is a
  * readout, not a lit container. `unknown` reads as BASELINE n/target, an honest

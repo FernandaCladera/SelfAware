@@ -1,7 +1,7 @@
 /**
  * ChatDock — the copilot command line. A toolbelt strip shows every tool
  * the loop has manufactured (chips pop in on admission); tool calls render
- * INLINE in the transcript as chips that resolve charge → phosphor/alert
+ * INLINE in the transcript as chips that resolve charge → live/alert
  * with their result; pre-typed prompt chips keep the presenter off the
  * keyboard. No send button — Enter is the machine's idiom.
  */

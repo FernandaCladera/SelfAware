@@ -4,7 +4,7 @@
  * each agent's seed yields a distinct arrangement of concentric arcs — while the
  * relay's STATE (idle/active/passed/failed) carries the accent, applied as a thin
  * frame/glow in CSS. So the ring itself stays a restrained, desaturated member of
- * the phosphor family; the loud phosphor-green is reserved for a genuine pass.
+ * the ion family; the signal-orange strike is reserved for a genuine pass.
  *
  * The style renders on a transparent background already (the only <rect> is the
  * viewbox mask that makes the arcs visible — do NOT remove it, or everything
@@ -16,13 +16,14 @@ import { rings } from '@dicebear/collection';
 import type { AgentKey } from './agents';
 
 /**
- * Per-agent hue — muted, cool, dark-friendly. One color each (not a rainbow):
- * distinct enough to read as identity, quiet enough never to be neon.
+ * Per-agent hue — vivid enough to pop off the cool graphite, one identity each
+ * (not a rainbow). Two shades per agent: DiceBear picks per-arc (seeded), so
+ * the ring gets depth instead of a flat single-color stroke.
  */
-const RING_COLOR: Partial<Record<AgentKey, string>> = {
-  author: '2f9d6e', // muted green — writes
-  medic: '3fa3a0', // teal — repairs
-  pilot: '6f8598', // graphite-slate — operates
+const RING_COLOR: Partial<Record<AgentKey, string[]>> = {
+  author: ['4da8ff', '8fd0ff'], // electric blue — writes
+  medic: ['2fd4bd', '7ceadb'], // bright teal — repairs
+  pilot: ['a58fff', 'cdbfff'], // violet — operates
 };
 
 const cache = new Map<string, string>();
@@ -37,7 +38,7 @@ export function ringFor(key: AgentKey): string {
   const svg = createAvatar(rings, {
     seed: key,
     size: 64,
-    ringColor: [color],
+    ringColor: color,
   }).toString();
 
   const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;

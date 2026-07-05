@@ -1,6 +1,6 @@
 /**
  * Tiny MicroPython tokenizer for the code well. Discipline: only keywords
- * get the accent family (phosphor-dim); comments go faint, numbers bright,
+ * get the chrome family (ion-dim); comments go faint, numbers bright,
  * strings dim. No grammar, no state — a single master regex per line.
  */
 

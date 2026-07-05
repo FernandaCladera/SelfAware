@@ -1,20 +1,20 @@
 /**
  * Panel pulse — a tiny pub/sub OUTSIDE React state, fed from dispatch via the
  * theater registry. Every server event may name one panel whose chrome
- * flashes for var(--pulse-ms), in a semantic tone: phosphor for life,
+ * flashes for var(--pulse-ms), in a semantic tone: live (orange) for life,
  * alert for the board's bad news. Panels opt in with usePanelPulse(id).
  */
 
 import { useEffect, useState } from 'react';
 import type { PanelId } from '../types/domain';
 
-export type PulseTone = 'phosphor' | 'alert';
+export type PulseTone = 'live' | 'alert';
 
 type Listener = (tone: PulseTone) => void;
 
 const listeners = new Map<PanelId, Set<Listener>>();
 
-export function firePulse(id: PanelId, tone: PulseTone = 'phosphor'): void {
+export function firePulse(id: PanelId, tone: PulseTone = 'live'): void {
   const set = listeners.get(id);
   if (!set) return;
   set.forEach((fn) => fn(tone));

@@ -42,12 +42,12 @@ function draw(canvas: HTMLCanvasElement, slug: string): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const cs = getComputedStyle(canvas);
-  const bg = cssVar(cs, '--bg-void', '#08090b');
-  const grid = cssVar(cs, '--line', 'rgb(255 255 255 / 0.06)');
-  const phosphor = cssVar(cs, '--phosphor', '#3dffa0');
-  const glow = cssVar(cs, '--phosphor-glow', 'rgb(61 255 160 / 0.35)');
-  const alert = cssVar(cs, '--alert', '#ff5f56');
-  const muted = cssVar(cs, '--text-dim', '#8b95a1');
+  const bg = cssVar(cs, '--bg-void', '#0f1216');
+  const grid = cssVar(cs, '--line', 'rgb(210 230 255 / 0.09)');
+  const signal = cssVar(cs, '--live', '#ff8a3d');
+  const glow = cssVar(cs, '--live-glow', 'rgb(255 138 61 / 0.4)');
+  const alert = cssVar(cs, '--alert', '#ff5d4d');
+  const muted = cssVar(cs, '--text-dim', '#96a2b0');
 
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
@@ -69,7 +69,7 @@ function draw(canvas: HTMLCanvasElement, slug: string): void {
   const ring = useStore.getState().readings.bySlug[slug];
   if (!ring || ring.length < 2) {
     ctx.fillStyle = muted;
-    ctx.font = '12px ui-monospace, monospace';
+    ctx.font = '13px ui-monospace, monospace';
     ctx.fillText('no signal yet', 12, h / 2);
     return;
   }
@@ -93,11 +93,11 @@ function draw(canvas: HTMLCanvasElement, slug: string): void {
   const px = (i: number) => (i / (n - 1)) * w;
   const py = (v: number) => h - ((v - min) / (max - min)) * h;
 
-  // phosphor trace (alloc-free walk of the ring)
-  ctx.strokeStyle = phosphor;
+  // signal trace (alloc-free walk of the ring)
+  ctx.strokeStyle = signal;
   ctx.lineWidth = 1.5;
   ctx.shadowColor = glow;
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 12;
   ctx.beginPath();
   ring.forEach((pt, i) => {
     if (i === 0) ctx.moveTo(px(i), py(pt.v));
@@ -106,7 +106,7 @@ function draw(canvas: HTMLCanvasElement, slug: string): void {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // implausible stretches re-draw in the reserved alert, over the phosphor
+  // implausible stretches re-draw in the reserved alert, over the signal
   ctx.strokeStyle = alert;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
