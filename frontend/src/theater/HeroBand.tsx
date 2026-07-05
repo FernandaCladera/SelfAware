@@ -9,6 +9,7 @@
 import { derivePhase } from './agents';
 import { useStagedPhase } from './useStagedPhase';
 import { AgentRelay } from './AgentRelay';
+import { TracebackMoment } from './TracebackMoment';
 import { ReadingScope } from '../components/panels/ReadingScope';
 import { HealthChip } from '../components/primitives/HealthChip';
 import { useHealth } from '../state/selectors';
@@ -57,9 +58,10 @@ export function HeroBand({ active, drivers, boardLabel }: HeroBandProps) {
   const foot = signalFoot(focusCard, health, isOutput);
 
   return (
-    <div className="hero">
+    <div className="hero" data-tone={phase.tone}>
       <div className="hero__main">
         <AgentRelay phase={phase} active={active} />
+        <TracebackMoment phase={phase} active={active} />
       </div>
 
       <aside className="hero__signal" data-tone={phase.tone}>

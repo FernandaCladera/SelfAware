@@ -44,7 +44,7 @@ export function AgentRelay({
   const tools = showTools ? active!.toolsByAttempt[active!.attempt] ?? [] : [];
 
   return (
-    <div className="relay" data-repairing={repairing ? '' : undefined}>
+    <div className="relay" data-repairing={repairing ? '' : undefined} data-tone={phase.tone}>
       <div className="relay__track">
         {RELAY.map((station, i) => {
           const state: StationState = phase.stationState[station.id] ?? 'pending';
@@ -90,7 +90,12 @@ export function AgentRelay({
                 <span className="relay__label machine">{station.label}</span>
                 <span className="relay__kind machine">{persona.agent ? 'agent' : station.kind}</span>
                 {station.id === 'board' && scars.length ? (
-                  <span className="relay__scars machine">{scars.map((n) => `✗${n}`).join(' ')}</span>
+                  <span className="relay__scars machine">
+                    {scars.map((n) => `✗${n}`).join(' ')}
+                    {active?.outcome === 'passed' ? (
+                      <span className="relay__scars-heal"> ✓ repaired</span>
+                    ) : null}
+                  </span>
                 ) : null}
               </div>
             </div>

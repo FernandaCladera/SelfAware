@@ -281,12 +281,81 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: calc(var(--unit) * 4) calc(var(--unit) * 5);
+  transition: border-color var(--stage-ms) var(--ease-snap);
 }
 .hero__main {
   display: flex;
   flex-direction: column;
   justify-content: center;
   min-width: 0;
+}
+
+/* ---- the traceback moment — the reserved red, finally legible ------------ */
+/* The band itself takes the alert only while the board's rejection is the
+   story: the ambient hum cools to the alert tint and the border slams once. */
+.hero[data-tone='alert'] {
+  border-color: var(--alert-dim);
+  background:
+    radial-gradient(60% 130% at 22% 0%, var(--alert-tint), transparent 70%),
+    radial-gradient(45% 110% at 88% 100%, var(--alert-tint), transparent 72%),
+    var(--bg-panel);
+  animation: hero-slam 240ms linear;
+}
+@keyframes hero-slam {
+  0% {
+    box-shadow:
+      0 0 0 1px var(--alert),
+      0 0 32px -6px var(--alert-glow);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.tbmoment {
+  margin-top: calc(var(--unit) * 4);
+  padding: calc(var(--unit) * 3) calc(var(--unit) * 4);
+  border: 1px solid var(--alert-dim);
+  border-left: 3px solid var(--alert);
+  border-radius: var(--radius);
+  background: var(--alert-tint);
+  animation: fade-in var(--act-ms) var(--ease-snap);
+}
+.tbmoment__head {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--unit) * 2.5);
+}
+.tbmoment__glyph {
+  color: var(--alert);
+  font-size: var(--fs-emph);
+  line-height: 1;
+}
+.tbmoment__headline {
+  color: var(--alert);
+  font-size: var(--fs-head);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.tbmoment__line {
+  margin: calc(var(--unit) * 2) 0 0;
+  font-size: var(--fs-mono);
+  color: var(--alert); /* the board's VERBATIM last word — never trimmed */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* FIX beat: same wound, now in the medic's hands — charge tone, error dimmed */
+.tbmoment[data-beat='fix'] {
+  border-color: var(--charge-dim);
+  border-left-color: var(--charge);
+  background: transparent;
+}
+.tbmoment[data-beat='fix'] .tbmoment__glyph,
+.tbmoment[data-beat='fix'] .tbmoment__headline {
+  color: var(--charge);
+}
+.tbmoment[data-beat='fix'] .tbmoment__line {
+  color: var(--alert-dim);
 }
 
 /* ---- the relay ---------------------------------------------------------- */
@@ -424,6 +493,20 @@
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--alert-dim);
+  transition:
+    color var(--stage-ms) var(--ease-snap),
+    font-size var(--stage-ms) var(--ease-snap);
+}
+/* while the board's rejection IS the beat, the scar speaks at full volume */
+.relay[data-tone='alert'] .relay__scars {
+  color: var(--alert);
+  font-size: var(--fs-meta);
+}
+.relay__scars-heal {
+  display: block;
+  white-space: nowrap;
+  color: var(--live);
+  animation: fade-in var(--stamp-ms) var(--ease-snap);
 }
 
 /* --- state accents: a thin frame/glow on the active node only ------------- */
@@ -517,6 +600,23 @@
 }
 .relay__loop[data-active] {
   color: var(--charge);
+  /* the traceback traveling BACK toward the board — a leftward return-dash */
+  width: fit-content;
+  padding-bottom: 4px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--charge-dim) 0 6px,
+    transparent 6px 14px
+  );
+  background-size: 14px 2px;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  animation: relay-march-back var(--flow-s) linear infinite;
+}
+@keyframes relay-march-back {
+  to {
+    background-position: -14px 100%;
+  }
 }
 
 /* ---- the live SIGNAL card ----------------------------------------------- */
@@ -809,6 +909,16 @@
   .relay__link[data-flow] {
     animation: none;
     background: var(--charge);
+  }
+  /* the break→fix beats keep their static red/charge treatment — only motion goes */
+  .hero[data-tone='alert'],
+  .tbmoment,
+  .relay__scars-heal {
+    animation: none;
+  }
+  .relay__loop[data-active] {
+    animation: none;
+    background-image: none;
   }
   .relay__ring[data-spin] {
     animation: none;

@@ -17,6 +17,11 @@ import type { Phase } from './agents';
 
 const MIN_STAGE_MS = 750;
 const CATCHUP_MS = 320;
+// The traceback hold (demo-runbook): the theater freezes on the red long enough
+// to be read aloud. Alert beats never compress under backlog — on a live board
+// this can lag the display ~1.5s per failure, but alert beats are bounded by
+// max_attempts and every other beat still drains at CATCHUP_MS.
+const ALERT_HOLD_MS = 2200;
 
 /** Identity of a "beat" — what makes one relay state distinct from the next. */
 function beat(p: Phase): string {
@@ -37,7 +42,12 @@ export function useStagedPhase(raw: Phase): Phase {
         return;
       }
       setShown(next);
-      const dwell = queue.current.length > 2 ? CATCHUP_MS : MIN_STAGE_MS;
+      const dwell =
+        next.tone === 'alert'
+          ? ALERT_HOLD_MS
+          : queue.current.length > 2
+            ? CATCHUP_MS
+            : MIN_STAGE_MS;
       timer.current = setTimeout(play, dwell);
     };
 
