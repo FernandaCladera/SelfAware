@@ -80,6 +80,10 @@ last-resort fallback.
    once to approve the project server. **Approve it during rehearsal, never
    on stage.** From a terminal outside the repo:
    `claude mcp add --transport http selfaware http://127.0.0.1:8001/mcp`.
+   On stage you can source both strings live from the console itself:
+   **connect agent ▸** in the fascia (next to **commission ▸**) copies the
+   `claude mcp add …` command and the `.mcp.json` snippet — useful to show
+   judges the connection is a two-line, real operation, not a private setup.
 4. **Mid-session tool appearance — know the limitation instead of hoping:**
    tools commissioned *before* the Claude Code session starts appear
    automatically. A sensor commissioned *mid-session* will NOT push into an

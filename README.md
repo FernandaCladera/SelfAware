@@ -191,6 +191,11 @@ make dev-mcp     # Streamable HTTP MCP on 127.0.0.1:8001 (backend must be on :80
 # sensor was commissioned).
 ```
 
+The console hands you the exact commands: **connect agent ▸** in the top bar
+(next to **commission ▸**) copies the `claude mcp add …` command and the
+`.mcp.json` snippet, with the three steps above inline. Outside the repo,
+`claude mcp add --transport http selfaware http://127.0.0.1:8001/mcp`.
+
 Static tools (`list_capabilities`, `read_sensor`, `get_sensor_health`) exist
 before anything is commissioned; per-driver `read_<slug>`/`set_<slug>` tools
 appear as drivers are admitted. The hardware-touching endpoints are bearer-token

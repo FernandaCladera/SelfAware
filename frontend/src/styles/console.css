@@ -201,6 +201,60 @@
   cursor: not-allowed;
 }
 
+/* connect-agent popover — reuses .fascia__cmd shell, wider body */
+.connect__menu {
+  min-width: 360px;
+  gap: calc(var(--unit) * 2);
+}
+.connect__block {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(var(--unit) * 1.5);
+}
+.connect__code {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-void);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-machine);
+  font-size: var(--fs-meta);
+  line-height: 1.5;
+  padding: calc(var(--unit) * 1.5) calc(var(--unit) * 2);
+  overflow-x: auto;
+  white-space: nowrap;
+  user-select: all;
+}
+.connect__code--json {
+  white-space: pre;
+  color: var(--text-dim);
+}
+.connect__block .btn {
+  flex-shrink: 0;
+}
+.connect__copied {
+  color: var(--live);
+  border-color: var(--live-dim);
+}
+.connect__steps {
+  margin: 0;
+  padding-left: calc(var(--unit) * 4);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--unit) * 1.25);
+  color: var(--text-dim);
+  font-size: var(--fs-meta);
+  line-height: 1.5;
+}
+.connect__steps .machine {
+  color: var(--ion);
+}
+.connect__steps em {
+  color: var(--text);
+  font-style: italic;
+}
+
 .badge {
   border: 1px solid var(--line);
   border-radius: var(--radius);

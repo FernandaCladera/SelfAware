@@ -12,6 +12,7 @@ import type { BoardSlice } from '../../state/slices/board';
 import type { CommissionPreset } from '../../lib/presets';
 import { PROTOCOL_VERSION } from '../../types/events';
 import { StatusDot } from '../primitives/StatusDot';
+import { ConnectAgent } from './ConnectAgent';
 
 export interface BoardStatusProps {
   ws: WsStatus;
@@ -89,6 +90,8 @@ export function BoardStatus({
           ))}
         </div>
       </details>
+
+      <ConnectAgent />
 
       {protocolMismatch ? (
         <span className="fascia__warn">⚠ protocol mismatch — client v{PROTOCOL_VERSION}</span>
