@@ -30,7 +30,7 @@ dev-mcp: ## run the standalone MCP transport on :8001 (needs SELFAWARE_MCP_TOKEN
 	cd backend && uv run python -m selfaware.mcp_server
 
 test: ## backend tests — green with no .env, no docker, no USB, no API key
-	cd backend && uv run pytest -q
+	cd backend && uv run python -m pytest -q
 
 typecheck: ## frontend type check
 	cd frontend && npm run typecheck
